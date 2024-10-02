@@ -14,6 +14,7 @@ import com.envigite.doglist.databinding.ActivityMainBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.create
@@ -44,7 +45,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initSearchView() {
-        binding.svDogs.setOnQueryTextListener(object :androidx.appcompat.widget.SearchView.OnQueryTextListener{
+        binding.svDogs.setOnQueryTextListener(object :
+            androidx.appcompat.widget.SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(p0: String?): Boolean {
                 searchByName(p0.orEmpty())
                 return false
@@ -66,11 +68,12 @@ class MainActivity : AppCompatActivity() {
     private fun searchByName(query: String) {
         binding.progressBar.isVisible = true
         CoroutineScope(Dispatchers.IO).launch {//Todo lo que se haga aquí dentro será enm un hilo secundario
-            val call = getRetrofit().create(APIService::class.java).getDogsByBreeds("$query/images")
+            val call = getRetrofit().create(APIService::class.java).getDogsByBreeds(query)
             val puppies = call.body()
             runOnUiThread { //Todo lo que se haga aquí será nuevamente en el hilo principal
                 if (call.isSuccessful) {
-                    val images = puppies?.images ?: emptyList() // Si devuelve una nulo, entonces devuelve una lista vacia
+                    val images = puppies?.images
+                        ?: emptyList() // Si devuelve una nulo, entonces devuelve una lista vacia
                     dogImages.clear()
                     dogImages.addAll(images)
                     adapter.notifyDataSetChanged()//Le aviso al adapter que han habido cambios con la función notifyDataSetChanged()
@@ -94,8 +97,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun getRetrofit(): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://dog.ceo/api/breed/")
+            .baseUrl("https://dog.ceo/")
             .addConverterFactory(GsonConverterFactory.create())
+            //.client(getClient())// creo un cliente para añadirle el Interceptor
+            .build()
+    }
+
+    private fun getClient(): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(HeaderInterceptor())
             .build()
     }
 }
